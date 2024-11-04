@@ -12,7 +12,7 @@ apt-get install -y python3-venv
 
 # download repo
 cd /home/ubuntu
-git clone https://github.com/kura-labs-org/AIWL1.git /home/ubuntu/CNN_deploy
+git clone https://github.com/cgordon-dev/pneumonia_detection_deployment.git /home/ubuntu/CNN_deploy
 # Set permissions on the repo
 sudo chown -R ubuntu:ubuntu /home/ubuntu/CNN_deploy
 cd CNN_deploy/pneumonia_web

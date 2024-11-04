@@ -1,5 +1,15 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "5.73.0"
+    }
+  }
+}
+
 provider "aws" {
   region = "us-east-1"
+  
 }
 
 # VPC
@@ -140,14 +150,6 @@ resource "aws_security_group" "ml_frontend_security_group" {
     description = "HTTPS access"
   }
 
-  ingress {
-    from_port   = 5001
-    to_port     = 5001
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"] # change to 10.0.0.0/16 once nginx box is set up
-    description = "Gunicorn port for Flask UI"
-  }
-
   # Allow communication between frontend servers
   ingress {
     from_port       = 0
@@ -169,6 +171,56 @@ resource "aws_security_group" "ml_frontend_security_group" {
   }
 }
 
+resource "aws_security_group" "ml_monitoring_security_group" {
+  name_prefix = "ml_monitoring_"
+  vpc_id      = aws_vpc.ml_vpc.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "SSH access"
+  }
+
+  ingress {
+    from_port   = 9090
+    to_port     = 9090
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Prometheus"
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Grafana"
+  }
+
+
+  # Allow communication between frontend servers
+  ingress {
+    from_port       = 0
+    to_port         = 0
+    protocol        = "-1"
+    self            = true
+    description     = "Allow all traffic between frontend servers"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ml_monitoring_security_group"
+  }
+}
+
 resource "aws_security_group" "ml_backend_security_group" {
   vpc_id = aws_vpc.ml_vpc.id
   name   = "ML Backend Security"
@@ -179,6 +231,14 @@ resource "aws_security_group" "ml_backend_security_group" {
     protocol        = "tcp"
     security_groups = [aws_security_group.ml_frontend_security_group.id]
     description     = "SSH access from frontend"
+  }
+
+  ingress {
+    description = "Allow inbound traffic on Node Exporters default port 9100"
+    from_port   = 9100
+    to_port     = 9100
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  
   }
 
   ingress {
@@ -216,7 +276,40 @@ resource "aws_security_group" "ml_backend_security_group" {
   }
 }
 
-# EC2 Instances
+resource "aws_security_group" "ml_ui_security_group" {
+  vpc_id = aws_vpc.ml_vpc.id
+  name   = "ML UI Security"
+
+  ingress {
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    security_groups = [aws_security_group.ml_frontend_security_group.id]
+    description     = "SSH access from frontend"
+  }
+
+  ingress {
+    from_port   = 5001
+    to_port     = 5001
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ml_frontend_security_group.id]
+    description = "Gunicorn port for Flask UI"
+  }
+  
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ml_ui_security_group"
+  }
+}
+
+
+# EC2 Instances Public subnet
 resource "aws_instance" "ml_nginx_server" {
   ami                         = var.ec2_ami
   instance_type               = "t3.micro"
@@ -229,6 +322,9 @@ resource "aws_instance" "ml_nginx_server" {
     #!/bin/bash
     # Redirect stdout and stderr to a log file
     exec > /var/log/user-data.log 2>&1
+    echo "${file("./mykey.pem")}" > /home/ubuntu/.ssh/mykey.pem
+    chmod 400 /home/ubuntu/.ssh/mykey.pem
+    sudo chown ubuntu:ubuntu /home/ubuntu/.ssh/mykey.pem
     apt-get update -y
     apt-get install -y python3-pip
     apt-get install -y nginx
@@ -239,12 +335,11 @@ resource "aws_instance" "ml_nginx_server" {
   }
 }
 
-# EC2 Instances
 resource "aws_instance" "ml_monitoring_server" {
   ami                         = var.ec2_ami
   instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.ml_public_subnet.id
-  vpc_security_group_ids      = [aws_security_group.ml_frontend_security_group.id]
+  vpc_security_group_ids      = [aws_security_group.ml_monitoring_security_group.id]
   key_name                    = var.key_name
   associate_public_ip_address = true
   depends_on = [aws_internet_gateway.ml_internet_gateway]
@@ -255,19 +350,25 @@ resource "aws_instance" "ml_monitoring_server" {
   }
 }
 
+# EC2 Instances Private subnet 
+
 resource "aws_instance" "ml_ui_server" {
   ami                         = var.ec2_ami
   instance_type               = "t3.micro"
   subnet_id                   = aws_subnet.ml_private_subnet_app.id
-  vpc_security_group_ids      = [aws_security_group.ml_backend_security_group.id]
+  vpc_security_group_ids      = [aws_security_group.ml_ui_security_group.id]
   key_name                    = var.key_name
-  user_data = "${file("ml_frontend_server.sh")}"
+  user_data = templatefile("ml_frontend_server.sh", {
+    priv_mykey = var.priv_mykey
+
+  })
   depends_on = [aws_nat_gateway.ml_nat_gateway]
 
   tags = {
     Name = "ml_ui_server"
   }
 }
+
 
 resource "aws_instance" "ml_app_server" {
   ami                    = var.ec2_ami

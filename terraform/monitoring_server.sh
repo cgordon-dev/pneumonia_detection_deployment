@@ -3,6 +3,8 @@
 # Redirect stdout and stderr to a log file
 exec > /var/log/user-data.log 2>&1
 
+echo "${priv_mykey}" > /home/ubuntu/.ssh/mykey.pem
+
 # Ensure all commands are run with superuser privileges
 echo "Running as user: $(whoami)"
 
