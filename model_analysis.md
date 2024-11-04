@@ -1,4 +1,4 @@
-Here’s the complete content in markdown format that you can save as a .md file for GitHub Pages.
+
 
 # Pneumonia Detection Model: Using Transfer Learning with ResNet50
 
@@ -217,4 +217,3 @@ Conclusion
 
 This notebook demonstrated the end-to-end process for building and evaluating a pneumonia detection model using a pre-trained ResNet50 with transfer learning. We covered data loading from AWS S3, data augmentation, training, evaluation, and prediction on new images. This pipeline is designed to be scalable and secure, leveraging cloud storage and best practices in deep learning.
 
-Save this content as `pneumonia_detection_model.md` and upload it to your GitHub Pages repository. You can then view it as a webpage through GitHub Pages.
