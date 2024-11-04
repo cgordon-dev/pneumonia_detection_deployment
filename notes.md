@@ -1,4 +1,4 @@
-Certainly! Here’s an enhanced version of the Steps section, with a more detailed explanation following the workflow described in the architecture diagram and emphasizing technical details.
+
 
 Pneumonia Detection Application
 
