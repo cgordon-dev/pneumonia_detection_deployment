@@ -394,7 +394,7 @@ resource "aws_instance" "ml_training_server" {
   depends_on = [aws_nat_gateway.ml_nat_gateway]
 
   root_block_device {
-    volume_type           = "gp2"  # Standard General Purpose SSD
+    volume_type           = "gp3"  # Standard General Purpose SSD
     volume_size           = 35    
     delete_on_termination = true
   }
