@@ -1,100 +1,111 @@
+# Import necessary libraries
 import tensorflow as tf
 import numpy as np
+import matplotlib.pyplot as plt
+import os
 from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Flatten
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, BatchNormalization, Dropout
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from sklearn.metrics import classification_report, confusion_matrix
+import seaborn as sns
 
-# Download ResNet50(pre-trained CNN on ImageNet, great for image classification)
+# Set up directory and download data from AWS S3
+#pip install awscli
+#mkdir -p /content/chest_xray/
+#aws s3 cp s3://x-raysbucket/chest_xray/ /content/chest_xray/ --recursive --no-sign-request
+import subprocess
+
+# Define the data directory
+data_dir = "./chest_xray"
+
+# Ensure the directory exists
+os.makedirs(data_dir, exist_ok=True)
+
+# Run AWS CLI command to download dataset from S3
+subprocess.run([
+    "aws", "s3", "cp", "s3://x-raysbucket/chest_xray/", data_dir,
+    "--recursive", "--no-sign-request"
+])
+# Load the ResNet50 model (pre-trained on ImageNet) and set up for transfer learning
 from tensorflow.keras.applications import ResNet50
 base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
 
-# Unfreeze last 20 layers of ResNet50
+# Unfreeze the last 20 layers of the base model for fine-tuning
 for layer in base_model.layers[-20:]:
     layer.trainable = True
 
-# Add classification layers
+# Add custom layers on top of ResNet50 for binary classification
 x = base_model.output
-x = GlobalAveragePooling2D()(x)  # This reduces the 7x7x2048 output to 2048
-x = Dense(512, activation='relu')(x)  # Add a dense layer to help with feature processing
-x = Dense(1, activation='sigmoid')(x)  # Final layer for binary classification
+x = GlobalAveragePooling2D()(x)  # Reduces the feature map to a vector
+x = BatchNormalization()(x)       # Add batch normalization to stabilize learning
+x = Dense(64, activation='relu')(x)  # Reduced number of neurons for simplicity
+x = Dense(128, activation='relu')(x)
+x = Dropout(0.4)(x)               # Adjusted dropout rate
+output = Dense(1, activation='sigmoid')(x)  # Output layer for binary classification
 
-model = Model(inputs=base_model.input, outputs=x)
+# Define the complete model
+model = Model(inputs=base_model.input, outputs=output)
 
-# # Compile the model
-# model.compile(
-#     optimizer='adam',
-#     loss='binary_crossentropy',
-#     metrics=['accuracy']
-# )
-
-# Compile with reduced learning rate
+# Compile the model with a reduced learning rate
 model.compile(
-    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+    optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),  # Reduced learning rate
     loss='binary_crossentropy',
     metrics=['accuracy']
-
 )
 
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-
-# train_datagen = ImageDataGenerator(
-#     rescale=1./255,
-#     rotation_range=20,
-#     width_shift_range=0.2,
-#     height_shift_range=0.2,
-#     horizontal_flip=True
-# )
-
-# Updated data augmentation
+# Set up data generators with augmentation for training
 train_datagen = ImageDataGenerator(
     rescale=1./255,
-    rotation_range=10,  # Reduced rotation
-    width_shift_range=0.1,  # Reduced shift range
+    rotation_range=10,
+    width_shift_range=0.1,
     height_shift_range=0.1,
     horizontal_flip=True
 )
 val_datagen = ImageDataGenerator(rescale=1./255)
 test_datagen = ImageDataGenerator(rescale=1./255)
 
-# Use class weights if needed
-class_weight = {0: 1.0, 1: 1.5}  # Adjust based on class imbalance analysis
-
 # Load the data
+# Verify the paths in the `flow_from_directory` method to match the download location
 train_generator = train_datagen.flow_from_directory(
-    '/home/ubuntu/chest_xray/train',
+    os.path.join(data_dir, 'train'),
     target_size=(224, 224),
-    batch_size=32,
-    class_mode='binary'
+    batch_size=16,
+    class_mode='binary',
+    shuffle=True
 )
 val_generator = val_datagen.flow_from_directory(
-    '/home/ubuntu/chest_xray/val',
+    os.path.join(data_dir, 'val'),
     target_size=(224, 224),
     batch_size=32,
-    class_mode='binary'
+    class_mode='binary',
+    shuffle=False
 )
 test_generator = test_datagen.flow_from_directory(
-    '/home/ubuntu/chest_xray/test',
+    os.path.join(data_dir, 'test'),
     target_size=(224, 224),
     batch_size=32,
-    class_mode='binary'
+    class_mode='binary',
+    shuffle=False
 )
+# Adjusted class weights for better balance between classes
+class_weight = {0: 1.2, 1: 1.3}
 
-
-# Callbacks
+# Define callbacks for early stopping, model checkpointing, and learning rate reduction
 callbacks = [
-    EarlyStopping(monitor='val_loss', patience=3, restore_best_weights=True),
-    ModelCheckpoint('best_model.keras', monitor='val_accuracy', save_best_only=True)
+    EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
+    ModelCheckpoint('best_model.keras', monitor='val_accuracy', save_best_only=True),
+    ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=1e-6)  # Adjusted patience
 ]
-
-# # Train the model
-# history = model.fit(
-#     train_generator,
-#     steps_per_epoch=train_generator.samples // train_generator.batch_size,
-#     validation_data=val_generator,
-#     validation_steps=val_generator.samples // val_generator.batch_size,
-#     epochs=5,
-#     callbacks=callbacks
-# )
+# Train the model
+#history = model.fit(
+ #   train_generator,
+  #  steps_per_epoch=train_generator.samples // train_generator.batch_size,
+   # validation_data=val_generator,
+    #validation_steps=val_generator.samples // val_generator.batch_size,
+  # epochs=5,
+  # callbacks=callbacks
+#)
 
 # Train the model
 history = model.fit(
@@ -104,11 +115,24 @@ history = model.fit(
     validation_steps=val_generator.samples // val_generator.batch_size,
     epochs=20,
     class_weight=class_weight,
+    callbacks=callbacks
 )
 
+# Print training and validation metrics per epoch
+print("\nEpoch\tTraining Loss\tValidation Loss\tTraining Accuracy\tValidation Accuracy")
 
+# Iterate over each epoch's results and print them
+for epoch in range(len(history.history['loss'])):
+    train_loss = history.history['loss'][epoch]
+    val_loss = history.history['val_loss'][epoch]
+    train_accuracy = history.history['accuracy'][epoch]
+    val_accuracy = history.history['val_accuracy'][epoch]
 
+    # Print the data for the current epoch
+    print(f"{epoch+1}\t{train_loss:.4f}\t\t{val_loss:.4f}\t\t{train_accuracy:.4f}\t\t{val_accuracy:.4f}")
 
+# Save the trained model
+#model.save('pneumonia_model.keras')
 model.save('/home/ubuntu/models/pneumonia_model.keras')  # Using .keras format instead of .h5
 # Load the trained model for inference
 from tensorflow.keras.models import load_model
@@ -116,7 +140,7 @@ from tensorflow.keras.models import load_model
 import os
 # test the model all images in /content/chest_xray/test and get the predictions of each image
 # Get the list of image files in the test directory
-test_dir = '/content/chest_xray/test'
+test_dir = '/chest_xray/test'
 for root, dirs, files in os.walk(test_dir):
   for file in files:
     if file.endswith(('.jpg', '.jpeg', '.png')):
@@ -135,3 +159,15 @@ for root, dirs, files in os.walk(test_dir):
       print(f"Image: {test_image_path}")
       print(f"Prediction: {result} (confidence: {confidence:.2%})")
       print("---")
+
+# Evaluate the model on the test set and generate classification metrics
+Y_true = test_generator.classes  # True labels
+Y_pred = (model.predict(test_generator) > 0.5).astype("int32")  # Binary predictions
+
+# Confusion matrix and classification report
+conf_matrix = confusion_matrix(Y_true, Y_pred)
+class_report = classification_report(Y_true, Y_pred, target_names=test_generator.class_indices.keys())
+print("Confusion Matrix:")
+print(conf_matrix)
+print("\nClassification Report:")
+print(class_report)
