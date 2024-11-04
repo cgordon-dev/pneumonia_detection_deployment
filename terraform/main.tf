@@ -395,7 +395,7 @@ resource "aws_instance" "ml_training_server" {
 
   root_block_device {
     volume_type           = "gp2"  # Standard General Purpose SSD
-    volume_size           = 20     
+    volume_size           = 35    
     delete_on_termination = true
   }
 
