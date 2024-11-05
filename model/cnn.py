@@ -1,20 +1,12 @@
-# Import necessary libraries
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, BatchNormalization, Dropout
 from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
-import seaborn as sns
 
-# Set up directory and download data from AWS S3
-#pip install awscli
-#mkdir -p /content/chest_xray/
-#aws s3 cp s3://x-raysbucket/chest_xray/ /content/chest_xray/ --recursive --no-sign-request
-import subprocess
 
 # Define the data directory
 data_dir = "./chest_xray"
@@ -22,11 +14,6 @@ data_dir = "./chest_xray"
 # Ensure the directory exists
 os.makedirs(data_dir, exist_ok=True)
 
-# Run AWS CLI command to download dataset from S3
-subprocess.run([
-    "aws", "s3", "cp", "s3://x-raysbucket/chest_xray/", data_dir,
-    "--recursive", "--no-sign-request"
-])
 # Load the ResNet50 model (pre-trained on ImageNet) and set up for transfer learning
 from tensorflow.keras.applications import ResNet50
 base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
@@ -39,8 +26,12 @@ for layer in base_model.layers[-20:]:
 x = base_model.output
 x = GlobalAveragePooling2D()(x)  # Reduces the feature map to a vector
 x = BatchNormalization()(x)       # Add batch normalization to stabilize learning
-x = Dense(64, activation='relu')(x)  # Reduced number of neurons for simplicity
+x = Dense(128, activation='relu')(x)  # Reduced number of neurons for simplicity
+x = BatchNormalization()(x)
+x = Dense(256, activation='relu')(x)
+x = BatchNormalization()(x)
 x = Dense(128, activation='relu')(x)
+x = BatchNormalization()(x)
 x = Dropout(0.4)(x)               # Adjusted dropout rate
 output = Dense(1, activation='sigmoid')(x)  # Output layer for binary classification
 
@@ -97,15 +88,7 @@ callbacks = [
     ModelCheckpoint('best_model.keras', monitor='val_accuracy', save_best_only=True),
     ReduceLROnPlateau(monitor='val_loss', factor=0.2, patience=4, min_lr=1e-6)  # Adjusted patience
 ]
-# Train the model
-#history = model.fit(
- #   train_generator,
-  #  steps_per_epoch=train_generator.samples // train_generator.batch_size,
-   # validation_data=val_generator,
-    #validation_steps=val_generator.samples // val_generator.batch_size,
-  # epochs=5,
-  # callbacks=callbacks
-#)
+
 
 # Train the model
 history = model.fit(
