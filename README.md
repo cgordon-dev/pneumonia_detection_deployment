@@ -8,9 +8,9 @@ The purpose of this project is to develop an application that enables doctors to
 
 ![Pneumonia Detection Infrastructure Diagram](Diagram1.jpg)
 
-# Technical Overview of Pneumonia Detection Application Infrastructure
 
-This document provides a detailed technical overview of the pneumonia detection application's infrastructure deployed on AWS. The architecture leverages cloud resources, containerized applications, and monitoring tools to support the deployment, operation, and monitoring of an ML model for detecting pneumonia from chest X-ray images.
+
+This section provides a detailed technical overview of the pneumonia detection application's infrastructure deployed on AWS. The architecture leverages cloud resources, containerized applications, and monitoring tools to support the deployment, operation, and monitoring of an ML model for detecting pneumonia from chest X-ray images.
 
 ---
 
