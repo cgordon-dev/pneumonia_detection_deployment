@@ -1,9 +1,5 @@
 import tensorflow as tf
 import numpy as np
-<<<<<<< HEAD
-=======
-import os
->>>>>>> 5b4797a5122963eed3668b7c9503133b52f6a33a
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout, BatchNormalization, Activation, MaxPooling2D
 from tensorflow.keras.regularizers import l2
@@ -13,20 +9,8 @@ from tensorflow.keras import backend as K
 from keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
-<<<<<<< HEAD
 import os
 
-=======
-
-
-# Define the data directory
-data_dir = "./chest_xray"
-
-# Ensure the directory exists
-os.makedirs(data_dir, exist_ok=True)
-
-# Load the ResNet50 model (pre-trained on ImageNet) and set up for transfer learning
->>>>>>> 5b4797a5122963eed3668b7c9503133b52f6a33a
 from tensorflow.keras.applications import ResNet50
 
 base_model = ResNet50(weights="imagenet", include_top=False, input_shape=(224, 224, 3))
@@ -49,22 +33,7 @@ x = Dense(1, activation="sigmoid")(x)
 for layer in base_model.layers[-20:]:
     layer.trainable = True
 
-<<<<<<< HEAD
 initial_learning_rate = 1e-5
-=======
-# Add custom layers on top of ResNet50 for binary classification
-x = base_model.output
-x = GlobalAveragePooling2D()(x)  # Reduces the feature map to a vector
-x = BatchNormalization()(x)       # Add batch normalization to stabilize learning
-x = Dense(128, activation='relu')(x)  # Reduced number of neurons for simplicity
-x = BatchNormalization()(x)
-x = Dense(256, activation='relu')(x)
-x = BatchNormalization()(x)
-x = Dense(128, activation='relu')(x)
-x = BatchNormalization()(x)
-x = Dropout(0.4)(x)               # Adjusted dropout rate
-output = Dense(1, activation='sigmoid')(x)  # Output layer for binary classification
->>>>>>> 5b4797a5122963eed3668b7c9503133b52f6a33a
 
 lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
     initial_learning_rate=initial_learning_rate,
@@ -146,10 +115,6 @@ callbacks = [
     EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True),
     ModelCheckpoint('best_model.keras', monitor='val_accuracy', save_best_only=True)
 ]
-<<<<<<< HEAD
-=======
-
->>>>>>> 5b4797a5122963eed3668b7c9503133b52f6a33a
 
 try:
     # Try to get one batch and see what happens
