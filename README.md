@@ -156,7 +156,7 @@ The model shows strong performance in classifying between "NORMAL" and "PNEUMONI
    - **False Negatives (FN)**: 8 images incorrectly classified as "NORMAL."
    - **True Positives (TP)**: 171 images correctly classified as "PNEUMONIA."
 
-![Classification_Report](images/Classification_Report.jpg)
+![Classification_Report](images/classification_report.jpg)
 
 2. **Classification Report**:
    - **Precision for NORMAL**: 0.96 – the model is 96% accurate when it predicts "NORMAL."
