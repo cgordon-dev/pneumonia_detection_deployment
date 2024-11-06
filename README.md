@@ -6,7 +6,7 @@ The purpose of this project is to develop an application that enables doctors to
 
 ## Infrastructure Overview
 
-![Pneumonia Detection Infrastructure Diagram](Diagram.jpg)
+![Pneumonia Detection Infrastructure Diagram](Diagram1.jpg)
 
 This project leverages AWS to deploy a secure, scalable infrastructure using Terraform. Below is a summary of the key components:
 
