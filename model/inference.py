@@ -5,10 +5,10 @@ from tensorflow.keras.models import load_model
 import os
 
 # Connect to Redis
-r = redis.Redis(host='backendapi_private_ip', port=6379, db=0)
+r = redis.Redis(host='10.0.2.111', port=6379, db=0)
 
 # Load the model
-model = load_model('pneumonia_model.keras')
+model = load_model('/home/ubuntu/models/pneumonia_model.keras')
 
 # Directory containing test images
 test_dir = '/home/ubuntu/chest_xray/test/'
@@ -30,16 +30,17 @@ for root, dirs, files in os.walk(test_dir):
                 prediction = model.predict(img_array, verbose=0)
                 confidence = float(prediction[0][0])
                 result = "Pneumonia" if confidence > 0.5 else "Normal"
+                confidence_percentage = confidence * 100  # Convert to percentage
 
                 # Store result in Redis
                 r.hset(filename, mapping={
                     'prediction': result,
-                    'confidence': confidence
+                    'confidence': f"{confidence_percentage:.2f}%"  # Store as percentage string
                 })
 
                 # Print result
                 print(f"File: {filename}")
-                print(f"Prediction: {result} (confidence: {confidence:.2%})")
+                print(f"Prediction: {result} (confidence: {confidence_percentage:.2f}%)")
                 print("-" * 50)
 
             except Exception as e:
