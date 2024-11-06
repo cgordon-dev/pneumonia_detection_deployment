@@ -23,7 +23,7 @@ This section provides a detailed technical overview of the pneumonia detection a
 ### 2. Public Subnet (Accessible via the Internet Gateway)
 
 - **EC2 Instance (Repository Management)**:
-  - Hosts an EC2 instance to clone the application repository from **GitHub**. This allows **MLOps engineers** to manage and deploy the application's codebase. Infrastructure is provisioned, possibly using **Terraform** or **AWS CloudFormation**.
+  - Hosts an EC2 instance to clone the application repository from **GitHub**. This allows **MLOps engineers** to manage and deploy the application's codebase. Infrastructure is provisioned, possibly using **Terraform**.
   - Security group allows access to port 22 (SSH), ports 80 and 8081 for web services.
 
 - **Frontend (Nginx Server)**:
