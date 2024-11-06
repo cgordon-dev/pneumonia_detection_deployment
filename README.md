@@ -143,6 +143,30 @@ The application involves several essential steps to ensure model accuracy, relia
 ![Pneumonia Detection](images/ui_predict.jpg)
 ![Pneumonia Detection](images/ui_testresults.jpg)
 ![Dashboard](images/monitoring.jpg)
+
+### Summary of Model Results
+
+The model shows strong performance in classifying between "NORMAL" and "PNEUMONIA" cases, with an overall accuracy of **92%**. Below is a breakdown of the metrics:
+
+![Confusion Matrix](images/confusion_matrix.jpg)
+
+1. **Confusion Matrix**:
+   - **True Negatives (TN)**: 211 images correctly classified as "NORMAL."
+   - **False Positives (FP)**: 23 images incorrectly classified as "PNEUMONIA."
+   - **False Negatives (FN)**: 8 images incorrectly classified as "NORMAL."
+   - **True Positives (TP)**: 171 images correctly classified as "PNEUMONIA."
+
+![Classification_Report](images/Classification_Report.jpg)
+
+2. **Classification Report**:
+   - **Precision for NORMAL**: 0.96 – the model is 96% accurate when it predicts "NORMAL."
+   - **Recall for NORMAL**: 0.90 – the model correctly identifies 90% of actual "NORMAL" cases.
+   - **Precision for PNEUMONIA**: 0.88 – the model is 88% accurate when it predicts "PNEUMONIA."
+   - **Recall for PNEUMONIA**: 0.96 – the model identifies 96% of actual "PNEUMONIA" cases.
+
+These metrics indicate a balance in precision and recall across both classes, resulting in high f1-scores of **0.93** for "NORMAL" and **0.92** for "PNEUMONIA." This balance supports the model’s reliability in distinguishing between the two categories.
+
+
 ## Troubleshooting
 
 During development, several challenges were encountered, especially with server setup, model configuration, and system integration:
