@@ -8,29 +8,94 @@ The purpose of this project is to develop an application that enables doctors to
 
 ![Pneumonia Detection Infrastructure Diagram](Diagram1.jpg)
 
-This project leverages AWS to deploy a secure, scalable infrastructure using Terraform. Below is a summary of the key components:
+# Technical Overview of Pneumonia Detection Application Infrastructure
 
-1. **Networking**:
-   - **VPC**: A Virtual Private Cloud (VPC) named `ml_vpc` to isolate resources and provide secure networking.
-   - **Subnets**:
-     - Public subnet for resources requiring internet access (e.g., Nginx reverse proxy).
-     - Private subnets for application servers and a dedicated training server.
-   - **Internet Gateway and NAT Gateway**: The internet gateway allows public internet access, while the NAT gateway enables secure outbound internet access from private subnets.
-   
+This document provides a detailed technical overview of the pneumonia detection application's infrastructure deployed on AWS. The architecture leverages cloud resources, containerized applications, and monitoring tools to support the deployment, operation, and monitoring of an ML model for detecting pneumonia from chest X-ray images.
+
+---
+
+## Infrastructure Components and Architecture
+
+### 1. AWS Cloud Environment
+
+- The setup is deployed within AWS, using both the **Default VPC** and a custom **ML VPC**. The ML VPC is divided into public and private subnets for enhanced security and efficient resource management.
+
+### 2. Public Subnet (Accessible via the Internet Gateway)
+
+- **EC2 Instance (Repository Management)**:
+  - Hosts an EC2 instance to clone the application repository from **GitHub**. This allows **MLOps engineers** to manage and deploy the application's codebase. Infrastructure is provisioned, possibly using **Terraform** or **AWS CloudFormation**.
+  - Security group allows access to port 22 (SSH), ports 80 and 8081 for web services.
+
+- **Frontend (Nginx Server)**:
+  - Deployed on a `t3.micro` instance, **Nginx** serves as the web front end, routing HTTP requests to relevant services.
+  - Security group allows traffic on essential ports (e.g., 22, 80, 443, 3000, 5001, 9090, 9100) for web traffic and monitoring.
+  - This server connects to a **Flask**-based HTMX service in the private subnet, providing an interactive interface for uploading X-ray images and displaying diagnostic results.
+
+- **Monitoring (Grafana & Prometheus)**:
+  - Prometheus and Grafana, on a separate `t3.micro` instance, monitor the application’s performance.
+  - Prometheus collects metrics, while Grafana displays them in a dashboard.
+  - Accessed via **NAT Gateway** for secure interaction with private subnet resources.
+
+### 3. Private Subnet (Isolated for Security)
+
+- **Frontend (HTMX with Flask on Gunicorn WSGI Server)**:
+  - Hosted on a `t3.medium` instance, the HTMX and **Flask** application allows doctors to upload chest X-ray images and view results.
+  - Security groups restrict access to select ports (e.g., 22, 5000, 8000).
+  - Requests are forwarded to the backend model API for processing and diagnosis.
+
+- **Backend (ML Training Server with ResNet50 CNN)**:
+  - Deployed on a **p3.2xlarge** instance with **NVIDIA CUDA** for accelerated ML computations.
+  - **ResNet50 CNN** model processes the chest X-ray images to detect pneumonia.
+  - **Node Exporter** collects hardware and OS metrics for Prometheus, enabling detailed monitoring.
+
+- **Redis Cache**:
+  - Redis provides a caching layer for storing processed data and model predictions, minimizing latency on repeated requests.
+  - It can also function as a queue during high-load scenarios.
+
+### 4. Amazon S3 Bucket for Image Storage
+
+- **Amazon S3** is used to store the chest X-ray images uploaded by doctors and holds training data for model improvements.
+- The backend server retrieves data from this bucket, which can also archive processed data and model versions.
+
+---
+
+## Workflow
+
+1. **Doctor Interaction**:
+   - A doctor accesses the web frontend via Nginx, uploads chest X-ray images, and views the results.
+
+2. **Image Processing and Diagnosis**:
+   - Uploaded images are sent to the backend (ResNet50 CNN) in the private subnet for processing.
+   - Diagnosis results are returned to the frontend for display.
+
+3. **Model Training and Optimization**:
+   - The backend instance periodically updates the model with new data from S3, leveraging the GPU-enabled p3.2xlarge instance for accelerated training.
+
+4. **Monitoring**:
+   - Prometheus collects performance metrics, which Grafana visualizes. The MLOps engineer can monitor CPU usage, memory, and inference latency.
+
+5. **Model Management**:
+   - MLOps engineers clone the repository, manage code updates, and redeploy infrastructure as needed.
+
+---
+
+## Security Measures
+
+1. **VPC Segmentation**:
+   - Sensitive services are isolated in the private subnet, reducing exposure to the internet.
+
 2. **Security Groups**:
-   - **Frontend Security Group**: Allows HTTP, HTTPS, and SSH access to the public Nginx server.
-   - **Backend Security Group**: Restricts access to backend services, allowing only necessary traffic from frontend and internal services.
-   - **Monitoring Security Group**: Manages access to Prometheus and Grafana for application health monitoring.
-   - **UI Security Group**: Controls access to the application UI server for secure user interaction.
+   - Instances have controlled security groups that limit access to essential ports only.
 
-3. **EC2 Instances**:
-   - **Nginx Server**: A public server acting as the frontend and reverse proxy.
-   - **Monitoring Server**: Hosts Prometheus and Grafana for application health monitoring.
-   - **UI Server**: The private server that handles user interactions.
-   - **App Server**: Runs the backend API and services, including Redis.
-   - **Training Server**: A GPU-enabled instance for model training and inference.
+3. **NAT Gateway**:
+   - Enables instances in the private subnet to securely access the internet without exposing them directly.
 
-## Steps
+4. **AWS IAM and Access Management**:
+   - IAM roles and policies control access to resources, ensuring only authorized access to sensitive data.
+
+---
+
+## Steps for ML Model Contruction and Tuning
 
 The application involves several essential steps to ensure model accuracy, reliability, and efficient visibility of results on the frontend. Here’s a step-by-step breakdown of the workflow, technical components, and code snippets for the application.
 
