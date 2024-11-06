@@ -140,6 +140,9 @@ The application involves several essential steps to ensure model accuracy, relia
 ### 9. Frontend Display and User Interface
    - **Frontend UI**: Built with HTML and JavaScript, the frontend enables doctors to upload X-ray images and view predictions in real-time.
 
+![Pneumonia Detection](images/ui_predict.jpg)
+![Pneumonia Detection](images/ui_testresults.jpg)
+![Dashboard](images/monitoring.jpg)
 ## Troubleshooting
 
 During development, several challenges were encountered, especially with server setup, model configuration, and system integration:
